@@ -180,27 +180,27 @@ void* memxor(void* restrict dst, const void* restrict src, size_t n)
 }
 
 // Sponge.
-uint64_t* sponge(
+char* sponge(
   uint64_t* (*f)(uint64_t*),
-  uint64_t* (*pad)(size_t, size_t),
+  char* (*pad)(size_t, size_t),
   size_t r,
-  uint64_t* N,
+  char* N,
   size_t d
 )
 {
   // let P = N || pad(r, len(N)).
-  size_t szN = sizeof(N);
-  uint64_t* padrN = pad(r, szN);
-  size_t szPN = sizeof(padrN);
-  uint64_t P[(szN + szPN) / sizeof(uint64_t)];
+  size_t szN = strlen(N);
+  char* padrN = pad(r, szN);
+  size_t szPN = strlen(padrN);
+  char P[szN + szPN];
   memcpy(P, N, szN);
   size_t pidx = 0;
-  memmove(P + sizeof(N) / 8, padrN, szPN);
+  memmove(P + szN, padrN, szPN);
   size_t n = (szN + szPN) / r;
   size_t c = _B - r;
   // Let S = 0^b.
-  uint64_t S[_B / (8 * sizeof(uint64_t))];
-  uint64_t Pi[_B / (8 * sizeof(uint64_t))];
+  uint64_t S[_B / 8];
+  char Pi[_B / 8];
   memset(S,  0, _B / 8);
   // For i from 0 to n - 1, let S = f(S ^ (Pi || 0^c)).
   for (size_t idx = 0; idx < n; ++idx) {
@@ -210,8 +210,8 @@ uint64_t* sponge(
     f(S);
   }
   // Get d bits.
-  uint64_t* Z = (uint64_t*)malloc(d / 8);
-  uint64_t* Zbase = Z;
+  char* Z = (char*)malloc(d / 8);
+  char* Zbase = Z;
   for (size_t idx = 0; idx < (d - 1) / r + 1; ++idx) {
     // Only copy the last d % r bytes on the last iteration.
     // If d == r, then we should go ahead and copy all r bytes.
@@ -225,18 +225,18 @@ uint64_t* sponge(
 }
 
 // Pad10*1.
-uint64_t* pad(size_t x, size_t m)
+char* pad(size_t x, size_t m)
 {
   size_t j = ((-m - 2) % x + x) % x;
-  uint64_t* P = (uint64_t*)malloc((j + 2) / 8);
+  char* P = (char*)malloc((j + 2) / 8);
   memset(P, 0, (j + 2) / 8);
   P[0] = 0x80;
-  P[(j + 2) / (8 * sizeof(uint64_t))] = 0x01;
+  P[(j + 2) / 8] = 0x01;
   return P;
 }
 
 // Kekkak[c].
-uint64_t* keccak(size_t c, uint64_t* N, size_t d)
+char* keccak(size_t c, char* N, size_t d)
 {
   return sponge(&keccakf, &pad, _B - c, N, d);
 }
@@ -248,19 +248,16 @@ int main(int argc, char* argv[])
     return 1;
   }
 
-  uint64_t* M = (uint64_t*)malloc(sizeof(argv[1]) + sizeof(argv[2]) + 1);
-  uint64_t* Mbase = M;
-  memcpy(M, (char*)argv[1], strlen(argv[1]));
-  M += strlen(argv[1]) / sizeof(uint64_t);
-  memcpy(M, (char*)argv[2], strlen(argv[2]));
-  M += strlen(argv[2]) / sizeof(uint64_t);
+  char* M = (char*)malloc(strlen(argv[1]) + strlen(argv[2]) + 1);
+  char* Mbase = M;
+  memcpy(M, argv[1], strlen(argv[1]));
+  M += strlen(argv[1]);
+  memcpy(M, argv[2], strlen(argv[2]));
+  M += strlen(argv[2]);
   *M = 0x01;
 
-  uint64_t* resp = keccak(1024, Mbase, 512);
-  for (size_t idx = 0; idx < sizeof(resp); ++idx) {
-    printf("%llx", resp[idx]);
-  }
-  printf("\n");
+  char* resp = keccak(1024, Mbase, 512);
+  printf("%s\n", resp);
 
   free(Mbase);
   free(resp);
