@@ -1,47 +1,32 @@
+#include "sha3.h"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-// Constants go here.
-enum {
-  _B    = 1600,
-  _W    = 64,
-  _L    = 6
-};
-
-// Rotate a given bitstring left by the specified amount.
-uint64_t rot(size_t bits, uint64_t x)
-{
-  return (x << bits) | (x >> (64 - bits));
-}
-
 // Step one of Keccak-p.
-uint64_t* theta(uint64_t* words)
+void theta(uint64_t* A)
 {
-  uint64_t C[5] = {0};
-  uint64_t D[5] = {0};
-
-  // For all pairs ... let C[x, z] = ^ A[x, _, z].
-  for (size_t idx = 0; idx < _B / _W; ++idx) {
-    C[idx % 5] ^= words[idx];
-  }
-
   // For all pairs ... let D[x, z] = C[x - 1, z] ^ C[x + 1, z - 1].
-  for (size_t idx = 0; idx < 5; ++idx) {
-    D[idx] = C[(idx + 4) % 5] ^ rot(1, C[(idx + 1) % 5]);
-  }
+  uint64_t D[5] = {
+    XOR(A, 4) ^ ROTL64(1, XOR(A, 1)),
+    XOR(A, 0) ^ ROTL64(1, XOR(A, 2)),
+    XOR(A, 1) ^ ROTL64(1, XOR(A, 3)),
+    XOR(A, 2) ^ ROTL64(1, XOR(A, 4)),
+    XOR(A, 3) ^ ROTL64(1, XOR(A, 0)),
+  };
 
   // For all triples ... let A'[x, y, z] = A[x, y, z] ^ D[x, z].
-  for (size_t idx = 0; idx < _B / _W; ++idx) {
-    words[idx] ^= D[idx % 5];
+  for (size_t i = 0; i < PERMUTATIONS; ++i) {
+    A[i] ^= D[i % 5];
   }
 
-  return words;
+  return;
 }
 
 // Step two of Keccak-p.
-uint64_t* rho(uint64_t* words)
+void rho(uint64_t* words)
 {
   uint64_t words_[25];
 
@@ -55,7 +40,7 @@ uint64_t* rho(uint64_t* words)
   for (size_t t = 0; t < 24; ++t) {
     // For all z ... let A'[x, y, z] = A[x, y, z - (t + 1)(t + 2)/2].
     offset = ((t + 1) * (t + 2) / 2) % _W;
-    words_[5 * y + x] = rot(offset, words[5 * y + x]);
+    words_[5 * y + x] = ROTL64(offset, words[5 * y + x]);
     old_x = x;
     x = y;
     y = (2 * old_x + 3 * y) % 5;
@@ -63,11 +48,11 @@ uint64_t* rho(uint64_t* words)
 
   // Move A' to A.
   memcpy(words, words_, _B / 8);
-  return words;
+  return;
 }
 
 // Step three of Keccak-p.
-uint64_t* pi(uint64_t* words)
+void pi(uint64_t* words)
 {
   uint64_t words_[25];
 
@@ -80,80 +65,57 @@ uint64_t* pi(uint64_t* words)
 
   // Move A' to A.
   memcpy(words, words_, _B / 8);
-  return words;
+  return;
 }
 
 // Step four of Keccak-p.
-uint64_t* chi(uint64_t* words)
+void chi(uint64_t* words)
 {
   uint64_t words_[25];
   uint64_t others = 0;
 
   // For all triples ... let
-  // A'[x, y, z] = A[x, y, z] ^ (!A[x + 1, y, z] & A[x + 2, y, z]).
+  // A'[x, y, z] = A[x, y, z] ^ (~A[x + 1, y, z] & A[x + 2, y, z]).
   for (size_t y = 0; y < 5; ++y) {
     for (size_t x = 0; x < 5; ++x) {
-      others = words[5 * y + ((x + 1) % 5)] & words[5 * y + ((x + 2) % 5)];
+      others = ~words[5 * y + ((x + 1) % 5)] & words[5 * y + ((x + 2) % 5)];
       words_[5 * y + x] = words[5 * y + x] ^ others;
     }
   }
 
   // Move A' to A.
   memcpy(words, words_, _B / 8);
-  return words;
+  return;
 }
 
 // Step five of Keccak-p.
-uint8_t rc(uint8_t t)
+uint64_t rc(uint64_t t)
 {
-  // If t mod 255 = 0, return 1.
-  if (t == 0) {
-    return 1;
-  }
-
-  uint8_t R  = 0x80;
-  uint8_t R0;
-  uint8_t R4;
-  uint8_t R5;
-  uint8_t R6;
-  uint8_t R8;
+  uint64_t R = 0x1;
   // For i from 1 to t mod 255, let ...
-  //     0   1   2   3   4   5   6   7   8
-  // R = 0 | _ | _ | _ | _ | _ | _ | _ | _
-  //        x80 x40 x20 x10 x08 x04 x02 x01
-  for (size_t idx = 0; idx <= t; ++idx) {
-    R4 = (0x10 & R) >> 4;
-    R5 = (0x08 & R) >> 3;
-    R6 = (0x04 & R) >> 2;
-    R8 = (0x01 & R);
-    // R[0] = R[0] ^ R[8].
-    R0 = (0 ^ R8) << 7;
-    // R[4] = R[4] ^ R[8].
-    R4 = (R4 ^ R8) << 3;
-    // R[5] = R[5] ^ R[8].
-    R5 = (R5 ^ R8) << 2;
-    // R[6] = R[6] ^ R[8].
-    R6 = (R6 ^ R8) << 1;
-    // R = Trunc8[R].
-    R = R0 | R4 | R5 | R6 | ((R >> 1) & 0b01110001);
+  for (size_t idx = 1; idx <= t; ++idx) {
+    R <<= 1;
+    if (R & 0x100) {
+      R ^= 0x71;
+    }
   }
 
   // Return R[0].
-  return R >> 7;
+  return R & 0x1;
 }
 
-uint64_t* iota(uint64_t* words, uint64_t ir)
+void iota(uint64_t* words, size_t ir)
 {
   uint64_t RC = 0;
 
   // For j from 0 to l, let RC[2^j - 1] = rc(j + 7ir).
   for (size_t j = 0; j <= _L; ++j) {
-    RC |= rc(j + 7 * ir) << (64 - (1 << j));
+    RC |= rc(j + 7 * ir) << ((1 << j) - 1);
   }
 
   // For all z ... let A'[0, 0, z] = A'[0, 0, z] ^ RC[z].
   words[0] ^= RC;
-  return words;
+  return;
 }
 
 // Keccak-f[1600] corresponding to Keccak-p[1600, 24].
@@ -220,9 +182,9 @@ char* sponge(
   size_t pidx = 0;
   size_t n = padresult->n / r;
   // Let S = 0^b.
-  uint64_t S[_B / 8];
-  char Pi[_B / 8];
+  uint64_t S[_B / _W];
   memset(S,  0, _B / 8);
+  char Pi[_B / 8];
   // For i from 0 to n - 1, let S = f(S ^ (Pi || 0^c)).
   for (size_t idx = 0; idx < n; ++idx) {
     memset(Pi, 0, _B / 8);
@@ -252,6 +214,20 @@ char* keccak(size_t c, char* N, size_t d)
   return sponge(&keccakf, &pad, _B - c, N, d);
 }
 
+void test() {
+  printf("starting bad\n");
+  uint64_t ir = 1;
+  uint64_t RC = 0;
+  printf("0x%llx\n", RC);
+
+  for (size_t j = 0; j <= _L; ++j) {
+    RC |= rc(j + 7 * ir) << ((1 << j) - 1);
+    printf(";;;\n");
+    printf("rc:  0x%llx\n", rc(j + 7 * ir));
+    printf("RC: 0x%016llx\n", RC);
+  }
+}
+
 int main(int argc, char* argv[])
 {
   if (argc != 3) {
@@ -268,7 +244,17 @@ int main(int argc, char* argv[])
   *M = 0x01;
 
   char* resp = keccak(1024, Mbase, 512);
-  printf("%s\n", resp);
+  // printf("%s\n", resp);
+  printf("%llx\n", *(uint64_t*)resp);
+  /* SHA512("accountpass") ->
+   *
+   * 8b10af5d435006033a111e652c140d59
+   * 454777754577b3cad9d60ba13e1e4b1d
+   * 2ed4c9ae9f060f014eb99bb8d55e7fdb
+   * c8c0779acb9e0ca74faf4437b191532d
+   */
+
+  // test();
 
   free(Mbase);
   free(resp);
