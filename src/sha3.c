@@ -88,22 +88,20 @@ void pi(uint64_t* A)
 }
 
 // Step four of Keccak-p.
-void chi(uint64_t* words)
+void chi(uint64_t* A)
 {
-  uint64_t words_[25];
-  uint64_t others = 0;
-
   // For all triples ... let
   // A'[x, y, z] = A[x, y, z] ^ (~A[x + 1, y, z] & A[x + 2, y, z]).
-  for (size_t y = 0; y < 5; ++y) {
-    for (size_t x = 0; x < 5; ++x) {
-      others = ~words[5 * y + ((x + 1) % 5)] & words[5 * y + ((x + 2) % 5)];
-      words_[5 * y + x] = words[5 * y + x] ^ others;
-    }
+  uint64_t A0, A1;
+  for (size_t i = 0; i < PERMUTATIONS; i += 5) {
+    A0 = A[i];
+    A1 = A[i + 1];
+    A[i    ] = A0       ^ (~A1       & A[i + 2]);
+    A[i + 1] = A1       ^ (~A[i + 2] & A[i + 3]);
+    A[i + 2] = A[i + 2] ^ (~A[i + 3] & A[i + 4]);
+    A[i + 3] = A[i + 3] ^ (~A[i + 4] & A0);
+    A[i + 4] = A[i + 4] ^ (~A0       & A1);
   }
-
-  // Move A' to A.
-  memcpy(words, words_, _B / 8);
 }
 
 // Step five of Keccak-p.
