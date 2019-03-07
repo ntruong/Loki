@@ -24,8 +24,9 @@ void theta(uint64_t* A)
 }
 
 // Step two of Keccak-p.
-void rho(uint64_t* words)
+void rho(uint64_t* A)
 {
+  /*
   uint64_t words_[25];
 
   // For all z ... let A'[0, 0, z] = A[0, 0, z].
@@ -46,6 +47,33 @@ void rho(uint64_t* words)
 
   // Move A' to A.
   memcpy(words, words_, _B / 8);
+  */
+
+  // For all z ... let A'[x, y, z] = A[x, y, z - (t + 1)(t + 2)/2].
+  A[ 1] = ROTL64( 1, A[ 1]);
+  A[ 2] = ROTL64(62, A[ 2]);
+  A[ 3] = ROTL64(28, A[ 3]);
+  A[ 4] = ROTL64(27, A[ 4]);
+  A[ 5] = ROTL64(36, A[ 5]);
+  A[ 6] = ROTL64(44, A[ 6]);
+  A[ 7] = ROTL64( 6, A[ 7]);
+  A[ 8] = ROTL64(55, A[ 8]);
+  A[ 9] = ROTL64(20, A[ 9]);
+  A[10] = ROTL64( 3, A[10]);
+  A[11] = ROTL64(10, A[11]);
+  A[12] = ROTL64(43, A[12]);
+  A[13] = ROTL64(25, A[13]);
+  A[14] = ROTL64(39, A[14]);
+  A[15] = ROTL64(41, A[15]);
+  A[16] = ROTL64(45, A[16]);
+  A[17] = ROTL64(15, A[17]);
+  A[18] = ROTL64(21, A[18]);
+  A[19] = ROTL64( 8, A[19]);
+  A[20] = ROTL64(18, A[20]);
+  A[21] = ROTL64( 2, A[21]);
+  A[22] = ROTL64(61, A[22]);
+  A[23] = ROTL64(56, A[23]);
+  A[24] = ROTL64(14, A[24]);
 }
 
 // Step three of Keccak-p.
