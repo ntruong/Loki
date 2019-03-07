@@ -179,25 +179,46 @@ void* memxor(void* restrict dst, const void* restrict src, size_t n)
   return dst_;
 }
 
+// Pad10*1.
+typedef struct {
+  char* P;
+  size_t n;
+} padded;
+
+padded* pad(int64_t x, int64_t m)
+{
+  padded* result = malloc(sizeof(padded));
+  size_t j = ((-m - 2) % x + x) % x;
+  // Total byte size of the padded string.
+  result->n = (m + j + 2) / 8;
+  char* P = (char*)malloc(result->n);
+  memset(P, 0, result->n);
+  // Clear the first m bits, setting the next bit to 1.
+  P[m / 8] = 0x80 >> (m % 8);
+  P[result->n - 1] = 0x01;
+  result->P = P;
+  return result;
+}
+
 // Sponge.
 char* sponge(
   uint64_t* (*f)(uint64_t*),
-  char* (*pad)(size_t, size_t),
+  padded* (*pad)(int64_t, int64_t),
   size_t r,
   char* N,
   size_t d
 )
 {
+  // Convert r, d to bytes.
+  r /= 8;
+  d /= 8;
   // let P = N || pad(r, len(N)).
   size_t szN = strlen(N);
-  char* padrN = pad(r, szN);
-  size_t szPN = strlen(padrN);
-  char P[szN + szPN];
+  padded* padresult = pad(r * 8, szN * 8);
+  char* P = padresult->P;
   memcpy(P, N, szN);
   size_t pidx = 0;
-  memmove(P + szN, padrN, szPN);
-  size_t n = (szN + szPN) / r;
-  size_t c = _B - r;
+  size_t n = padresult->n / r;
   // Let S = 0^b.
   uint64_t S[_B / 8];
   char Pi[_B / 8];
@@ -212,27 +233,17 @@ char* sponge(
   // Get d bits.
   char* Z = (char*)malloc(d / 8);
   char* Zbase = Z;
-  for (size_t idx = 0; idx < (d - 1) / r + 1; ++idx) {
-    // Only copy the last d % r bytes on the last iteration.
+  size_t ceil = (r - 1) / d + 1;
+  for (size_t idx = 0; idx < ceil; ++idx) {
+    // Only copy the last r % d bytes on the last iteration.
     // If d == r, then we should go ahead and copy all r bytes.
-    memcpy(Z, S, idx == (d - 1) / r ? r : (d == r ? r : d % r));
+    memcpy(Z, S, idx == ceil - 1 ? (d == r ? r : r % d) : r);
     f(S);
     Z += r / sizeof(uint64_t);
   }
   // Release memory.
-  free(padrN);
+  free(P);
   return Zbase;
-}
-
-// Pad10*1.
-char* pad(size_t x, size_t m)
-{
-  size_t j = ((-m - 2) % x + x) % x;
-  char* P = (char*)malloc((j + 2) / 8);
-  memset(P, 0, (j + 2) / 8);
-  P[0] = 0x80;
-  P[(j + 2) / 8] = 0x01;
-  return P;
 }
 
 // Kekkak[c].
