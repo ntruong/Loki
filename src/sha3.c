@@ -26,29 +26,6 @@ void theta(uint64_t* A)
 // Step two of Keccak-p.
 void rho(uint64_t* A)
 {
-  /*
-  uint64_t words_[25];
-
-  // For all z ... let A'[0, 0, z] = A[0, 0, z].
-  words_[0] = words[0];
-
-  size_t x = 1;
-  size_t old_x;
-  size_t y = 0;
-  size_t offset;
-  for (size_t t = 0; t < 24; ++t) {
-    // For all z ... let A'[x, y, z] = A[x, y, z - (t + 1)(t + 2)/2].
-    offset = ((t + 1) * (t + 2) / 2) % _W;
-    words_[5 * y + x] = ROTL64(offset, words[5 * y + x]);
-    old_x = x;
-    x = y;
-    y = (2 * old_x + 3 * y) % 5;
-  }
-
-  // Move A' to A.
-  memcpy(words, words_, _B / 8);
-  */
-
   // For all z ... let A'[x, y, z] = A[x, y, z - (t + 1)(t + 2)/2].
   A[ 1] = ROTL64( 1, A[ 1]);
   A[ 2] = ROTL64(62, A[ 2]);
