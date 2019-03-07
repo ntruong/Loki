@@ -49,19 +49,37 @@ void rho(uint64_t* words)
 }
 
 // Step three of Keccak-p.
-void pi(uint64_t* words)
+void pi(uint64_t* A)
 {
-  uint64_t words_[25];
+  // Save some point before rearrangement; we choose A[1, 0].
+  uint64_t A1 = A[1];
 
   // For all triples ... let A'[x, y, z] = A[x + 3y, x, z].
-  for (size_t y = 0; y < 5; ++y) {
-    for (size_t x = 0; x < 5; ++x) {
-      words_[5 * y + x] = words[5 * x + ((x + 3 * y) % 5)];
-    }
-  }
-
-  // Move A' to A.
-  memcpy(words, words_, _B / 8);
+  // Then we see A[5y + x] = A[6x + 3y (mod 5)] and write
+  A[ 1] = A[ 6];
+  A[ 6] = A[ 9];
+  A[ 9] = A[22];
+  A[22] = A[14];
+  A[14] = A[20];
+  A[20] = A[ 2];
+  A[ 2] = A[12];
+  A[12] = A[13];
+  A[13] = A[19];
+  A[19] = A[23];
+  A[23] = A[15];
+  A[15] = A[ 4];
+  A[ 4] = A[24];
+  A[24] = A[21];
+  A[21] = A[ 8];
+  A[ 8] = A[16];
+  A[16] = A[ 5];
+  A[ 5] = A[ 3];
+  A[ 3] = A[18];
+  A[18] = A[17];
+  A[17] = A[11];
+  A[11] = A[ 7];
+  A[ 7] = A[10];
+  A[10] = A1;
 }
 
 // Step four of Keccak-p.
