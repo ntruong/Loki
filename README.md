@@ -75,7 +75,7 @@ below.
 
 ### Iota
 > 2. Let `RC = 0^w`.
-> 3. For `j` from 0 to l, let
+> 3. For `j` from 0 to `l`, let
 > ```
 > RC[2^j - 1] = rc(j + 7ir).
 > ```
