@@ -1,39 +1,17 @@
 CC=gcc
-CFLAGS=-std=gnu99 -c -g
-BIN=bin
-BUILD=build
-SRC=src
-SRCS=$(wildcard $(SRC)/*.c)
-OBJS=$(SRCS:$(SRC)/%.c=$(BUILD)/%.o)
+CFLAGS=-std=gnu99 -g
+SRC=$(wildcard src/*.c)
 TARGET=loki
 
-.SECONDARY:
+.PHONY: all test clean
 
+all : $(TARGET)
 
-
-.PHONY: all
-all : $(BIN)/$(TARGET)
-
-$(BIN)/% : $(OBJS)
-	$(CC) $(OBJS) -o $(BIN)/$(TARGET)
-
-$(OBJS) : $(BIN) $(BUILD)
-
-$(BUILD)/%.o : $(SRC)/%.c
+$(TARGET) : $(SRC)
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BIN) :
-	@mkdir -p $(BIN)
-
-$(BUILD) :
-	@mkdir -p $(BUILD)
-
-.PHONY: test
 test : all
 	@./$(BIN)/$(TARGET) account pass
 
-.PHONY: clean
 clean :
-	rm -rf $(BUILD)/*
-	rm -rf $(BIN)/*
-
+	rm -rf $(TARGET)*
