@@ -21,8 +21,6 @@ void theta(uint64_t* A)
   for (size_t i = 0; i < PERMUTATIONS; ++i) {
     A[i] ^= D[i % 5];
   }
-
-  return;
 }
 
 // Step two of Keccak-p.
@@ -48,7 +46,6 @@ void rho(uint64_t* words)
 
   // Move A' to A.
   memcpy(words, words_, _B / 8);
-  return;
 }
 
 // Step three of Keccak-p.
@@ -65,7 +62,6 @@ void pi(uint64_t* words)
 
   // Move A' to A.
   memcpy(words, words_, _B / 8);
-  return;
 }
 
 // Step four of Keccak-p.
@@ -85,7 +81,6 @@ void chi(uint64_t* words)
 
   // Move A' to A.
   memcpy(words, words_, _B / 8);
-  return;
 }
 
 // Step five of Keccak-p.
@@ -115,7 +110,6 @@ void iota(uint64_t* words, size_t ir)
 
   // For all z ... let A'[0, 0, z] = A'[0, 0, z] ^ RC[z].
   words[0] ^= RC;
-  return;
 }
 
 // Keccak-f[1600] corresponding to Keccak-p[1600, 24].
