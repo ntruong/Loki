@@ -17,9 +17,9 @@ below.
 
 ## State Array and Strings
 > Given a bitstring `S`, we define the corresponding state array `A` as
-```
-A[x, y, z] = S[w(5y + x) + z].
-```
+> ```
+> A[x, y, z] = S[w(5y + x) + z].
+> ```
 
 ## Step Mappings
 > The five step mappings that comprise a round of `Keccak-p[b, n]` are denoted
@@ -27,46 +27,45 @@ A[x, y, z] = S[w(5y + x) + z].
 
 ### Theta
 > 1. For all pairs `(x, z)` ..., let
-```
-     C[x, z] = A[x, 0, z] ^ A[x, 1, z] ^ A[x, 2, z] ^ A[x, 3, z] ^ A[x, 4, z].
-```
+> ```
+> C[x, z] = A[x, 0, z] ^ A[x, 1, z] ^ A[x, 2, z] ^ A[x, 3, z] ^ A[x, 4, z].
+> ```
 > 2. For all pairs `(x, z)` ..., let
-```
-     D[x, z] = C[(x - 1) mod 5, z] ^ C[(x + 1) mod 5, (z - 1) mod w].
-```
+> ```
+> D[x, z] = C[(x - 1) mod 5, z] ^ C[(x + 1) mod 5, (z - 1) mod w].
+> ```
 > 3. For all triples `(x, y, z)` ..., let
-```
-     A'[x, y, z] = A[x, y, z] ^ D[x, z].
-```
+> ```
+> A'[x, y, z] = A[x, y, z] ^ D[x, z].
+> ```
 
 > The effect of theta is to XOR each bit in the state with the parities of two
 > columns in the array.
 
 ### Rho
 > 2. Let `(x, y) = (1, 0)`.
-> 3. For `t` from 0 to 23:
->      a. for all z ... let
-```
-          A'[x, y, z] = A[x, y, (z - (t + 1)(t + 2)/2) mod w].
-```
->      b. let `(x, y) = (y, (2x + 3y) mod 5)`.
+> 3. For `t` from 0 to 23, let
+> ```
+> A'[x, y, z] = A[x, y, (z - (t + 1)(t + 2)/2) mod w]
+> (x, y) = (y, (2x + 3y) mod 5).
+> ```
 
 > The effect of rho is to rotate the bits of each lane by a length, called the
 > offset, which depends on the fixed x and y coordinates of the lane.
 
 ### Pi
 > 1. For all triples ... let
-```
-     A'[x, y, z] = A[(x + 3y) mod 5, x, z].
-```
+> ```
+> A'[x, y, z] = A[(x + 3y) mod 5, x, z].
+> ```
 
 > The effect of pi is to rearrange the positions of the lanes.
 
 ### Chi
 > 1. For all triples ... let
-```
-     A'[x, y, z] = A[x, y, z] ^ (!A[(x + 1) mod 5, y, z] * A[(x + 2) mod 5, y, z]).
-```
+> ```
+> A'[x, y, z] = A[x, y, z] ^ (!A[(x + 1) mod 5, y, z] * A[(x + 2) mod 5, y, z]).
+> ```
 
 > The dot in the right side indicates integer multiplication ... equivalent to
 > the intended Boolean AND operation.
@@ -77,13 +76,13 @@ A[x, y, z] = S[w(5y + x) + z].
 ### Iota
 > 2. Let `RC = 0^w`.
 > 3. For `j` from 0 to l, let
-```
-     RC[2^j - 1] = rc(j + 7ir).
-```
+> ```
+> RC[2^j - 1] = rc(j + 7ir).
+> ```
 > 4. For all z ... let
-```
-     A'[0, 0, z] = A'[0, 0, z] ^ RC[z].
-```
+> ```
+> A'[0, 0, z] = A'[0, 0, z] ^ RC[z].
+> ```
 
 > The effect of iota is to modify some of the bits of lane `(0, 0)` in a manner
 > that depends on the round index ir.
