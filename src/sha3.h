@@ -31,13 +31,7 @@ void theta(uint64_t* A);
 void rho(uint64_t* A);
 void pi(uint64_t* A);
 void chi(uint64_t* A);
-void iota(uint64_t* A, size_t round_index);
-
-enum {
-  _B    = 1600,
-  _W    = 64,
-  _L    = 6
-};
+void iota(uint64_t* A, size_t ir);
 
 // Rotate 64-bit value left by specified amount.
 #define ROTL64(n, qword) ((qword) << (n) | (qword) >> (64 - (n)))

@@ -112,16 +112,15 @@ void iota(uint64_t* A, size_t ir)
 }
 
 // Keccak-f[1600] corresponding to Keccak-p[1600, 24].
-uint64_t* keccakf(uint64_t* S)
+void keccakf(uint64_t* A)
 {
-  for (size_t ir = 12 + 2 * _L - 24; ir < 12 + 2 * _L; ++ir) {
-    theta(S);
-    rho(S);
-    pi(S);
-    chi(S);
-    iota(S, ir);
+  for (size_t ir = 0; ir < ROUNDS; ++ir) {
+    theta(A);
+    rho(A);
+    pi(A);
+    chi(A);
+    iota(A, ir);
   }
-  return S;
 }
 
 // XOR the given blocks of memory for the given number of bytes.
@@ -157,7 +156,7 @@ padded* pad(int64_t x, int64_t m)
 
 // Sponge.
 char* sponge(
-  uint64_t* (*f)(uint64_t*),
+  void (*f)(uint64_t*),
   padded* (*pad)(int64_t, int64_t),
   size_t r,
   char* N,
@@ -175,14 +174,14 @@ char* sponge(
   size_t pidx = 0;
   size_t n = padresult->n / r;
   // Let S = 0^b.
-  uint64_t S[_B / _W];
-  memset(S,  0, _B / 8);
-  char Pi[_B / 8];
+  uint64_t S[PERMUTATIONS];
+  memset(S,  0, WIDTH / 8);
+  char Pi[WIDTH / 8];
   // For i from 0 to n - 1, let S = f(S ^ (Pi || 0^c)).
   for (size_t idx = 0; idx < n; ++idx) {
-    memset(Pi, 0, _B / 8);
+    memset(Pi, 0, WIDTH / 8);
     memcpy(Pi, &P[pidx++ * r], r);
-    memxor(S, Pi, _B / 8);
+    memxor(S, Pi, WIDTH / 8);
     f(S);
   }
   // Get d bits.
@@ -204,7 +203,7 @@ char* sponge(
 // Kekkak[c].
 char* keccak(size_t c, char* N, size_t d)
 {
-  return sponge(&keccakf, &pad, _B - c, N, d);
+  return sponge(&keccakf, &pad, WIDTH - c, N, d);
 }
 
 int main(int argc, char* argv[])
