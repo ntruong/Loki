@@ -105,32 +105,10 @@ void chi(uint64_t* A)
 }
 
 // Step five of Keccak-p.
-uint64_t rc(uint64_t t)
+void iota(uint64_t* A, size_t ir)
 {
-  uint64_t R = 0x1;
-  // For i from 1 to t mod 255, let ...
-  for (size_t idx = 1; idx <= t; ++idx) {
-    R <<= 1;
-    if (R & 0x100) {
-      R ^= 0x71;
-    }
-  }
-
-  // Return R[0].
-  return R & 0x1;
-}
-
-void iota(uint64_t* words, size_t ir)
-{
-  uint64_t RC = 0;
-
-  // For j from 0 to l, let RC[2^j - 1] = rc(j + 7ir).
-  for (size_t j = 0; j <= _L; ++j) {
-    RC |= rc(j + 7 * ir) << ((1 << j) - 1);
-  }
-
   // For all z ... let A'[0, 0, z] = A'[0, 0, z] ^ RC[z].
-  words[0] ^= RC;
+  A[0] ^= RC[ir];
 }
 
 // Keccak-f[1600] corresponding to Keccak-p[1600, 24].
@@ -227,20 +205,6 @@ char* sponge(
 char* keccak(size_t c, char* N, size_t d)
 {
   return sponge(&keccakf, &pad, _B - c, N, d);
-}
-
-void test() {
-  printf("starting bad\n");
-  uint64_t ir = 1;
-  uint64_t RC = 0;
-  printf("0x%llx\n", RC);
-
-  for (size_t j = 0; j <= _L; ++j) {
-    RC |= rc(j + 7 * ir) << ((1 << j) - 1);
-    printf(";;;\n");
-    printf("rc:  0x%llx\n", rc(j + 7 * ir));
-    printf("RC: 0x%016llx\n", RC);
-  }
 }
 
 int main(int argc, char* argv[])
