@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-std=gnu99 -g
+CFLAGS=-std=gnu99 -O3
 SRC=$(wildcard src/*.c)
 TARGET=loki
 
