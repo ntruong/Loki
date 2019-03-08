@@ -5,6 +5,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Character map so we don't have to worry about encoding.
+#define CHARMAPSIZE 85
+static const unsigned char charmap[CHARMAPSIZE] = {
+  'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+  'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+  'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+  'Y', 'Z', '0', '1', '2', '3', '4', '!',
+  'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
+  'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
+  'q', 'r', 's', 't', 'u', 'v', 'w', 'x',
+  'y', 'z', '5', '6', '7', '8', '9', '@',
+  '#', '$', '%', '^', '&', '*', '(', ')',
+  '~', '-', '_', '=', '+', '[', ']', '/',
+  '?', ';', ':', ',', '.'
+};
+
 // Step one of Keccak-p.
 void theta(uint64_t* A)
 {
@@ -123,118 +139,113 @@ void keccakf(uint64_t* A)
   }
 }
 
-// XOR the given blocks of memory for the given number of bytes.
-void* memxor(void* restrict dst, const void* restrict src, size_t n)
-{
-  void* dst_ = dst;
-  while (n-- > 0) {
-    *(char*)dst++ ^= *(char*)src++;
+// Sponge construction.
+void process(void (*f)(uint64_t*), uint64_t* S, uint64_t* P, size_t r) {
+  for (size_t i = 0; i < r / sizeof(uint64_t); ++i) {
+    S[i] ^= P[i];
   }
-  return dst_;
+  f(S);
 }
 
-// Pad10*1.
-typedef struct {
-  char* P;
-  size_t n;
-} padded;
-
-padded* pad(int64_t x, int64_t m)
+void pad(char* P, size_t sz, size_t r)
 {
-  padded* result = malloc(sizeof(padded));
-  size_t j = ((-m - 2) % x + x) % x;
-  // Total byte size of the padded string.
-  result->n = (m + j + 2) / 8;
-  char* P = (char*)malloc(result->n);
-  memset(P, 0, result->n);
-  // Clear the first m bits, setting the next bit to 1.
-  P[m / 8] = 0x80 >> (m % 8);
-  P[result->n - 1] = 0x01;
-  result->P = P;
-  return result;
+  P[sz]    = 0x06;
+  P[r - 1] = 0x80;
 }
 
-// Sponge.
-char* sponge(
+void* sponge(
   void (*f)(uint64_t*),
-  padded* (*pad)(int64_t, int64_t),
+  void (*p)(char*, size_t, size_t),
   size_t r,
-  char* N,
+  const char* N,
   size_t d
 )
 {
-  // Convert r, d to bytes.
-  r /= 8;
-  d /= 8;
-  // let P = N || pad(r, len(N)).
-  size_t szN = strlen(N);
-  padded* padresult = pad(r * 8, szN * 8);
-  char* P = padresult->P;
-  memcpy(P, N, szN);
-  size_t pidx = 0;
-  size_t n = padresult->n / r;
-  // Let S = 0^b.
-  uint64_t S[PERMUTATIONS];
-  memset(S,  0, WIDTH / 8);
-  char Pi[WIDTH / 8];
-  // For i from 0 to n - 1, let S = f(S ^ (Pi || 0^c)).
-  for (size_t idx = 0; idx < n; ++idx) {
-    memset(Pi, 0, WIDTH / 8);
-    memcpy(Pi, &P[pidx++ * r], r);
-    memxor(S, Pi, WIDTH / 8);
-    f(S);
-  }
-  // Get d bits.
-  char* Z = (char*)malloc(d / 8);
-  char* Zbase = Z;
-  size_t ceil = (r - 1) / d + 1;
-  for (size_t idx = 0; idx < ceil; ++idx) {
-    // Only copy the last r % d bytes on the last iteration.
-    // If d == r, then we should go ahead and copy all r bytes.
-    memcpy(Z, S, idx == ceil - 1 ? (d == r ? r : r % d) : r);
-    f(S);
-    Z += r / sizeof(uint64_t);
-  }
-  // Release memory.
-  free(P);
-  return Zbase;
-}
+  // Turn bits to bytes because it's easier.
+  r >>= 3;
+  d >>= 3;
 
-// Kekkak[c].
-char* keccak(size_t c, char* N, size_t d)
-{
-  return sponge(&keccakf, &pad, WIDTH - c, N, d);
+  // Current hash state.
+  uint64_t S[PERMUTATIONS] = {0};
+
+  // Take whole r-bit blocks from the message N until we have to pad.
+  size_t Nsz = strlen(N);
+  while (Nsz >= r) {
+    process(f, S, (uint64_t*)N, r);
+    Nsz -= r;
+    N   += r;
+  }
+  // We have to pad now; N || 0x06 || ... || 0x80.
+  uint64_t P[PERMUTATIONS] = {0};
+  memcpy(P, N, Nsz);
+  p((char*)P, Nsz, r);
+  process(f, S, (uint64_t*)P, r);
+
+  // Prepare d-bit string to return.
+  void* Z = (char*)malloc(d);
+  size_t Zoff = MIN(d, r);
+  memset(Z, 0, d);
+  memcpy(Z, S, Zoff);
+  size_t Zsz = Zoff;
+  while (Zsz < d) {
+    f(S);
+    Zoff = MIN(d - Zsz, r);
+    memcpy(Z + Zsz, S, Zoff);
+    Zsz += Zoff;
+  }
+
+  return Z;
 }
 
 int main(int argc, char* argv[])
 {
+  // Test to see if the hash is correct (endian problems?).
+  if (argc == 2 && strcmp(argv[1], "--test") == 0) {
+    const char* M = "accountpass";
+    uint64_t* resp    = (uint64_t*)SHA3(512, M);
+    uint64_t  test[8] = {
+      0x030650435daf108b,
+      0x590d142c651e113a,
+      0xcab3774575774745,
+      0x1d4b1e3ea10bd6d9,
+      0x010f069faec9d42e,
+      0xdb7f5ed5b89bb94e,
+      0xa70c9ecb9a77c0c8,
+      0x2d5391b13744af4f
+    };
+    for (size_t i = 0; i < 512 / 8 / sizeof(uint64_t); ++i) {
+      if (resp[i] != test[i]) {
+        fprintf(stderr, "something went wrong on %ld\n", i);
+        fprintf(stderr, "saw:      0x%016llx\n", resp[i]);
+        fprintf(stderr, "expected: 0x%016llx\n", test[i]);
+        return 1;
+      }
+    }
+    printf("we're okay\n");
+    return 0;
+  }
+
+  // Check for enough inputs
   if (argc != 3) {
     fprintf(stderr, "usage: loki [account] [password]\n");
     return 1;
   }
 
-  char* M = (char*)malloc(strlen(argv[1]) + strlen(argv[2]) + 1);
-  char* Mbase = M;
-  memcpy(M, argv[1], strlen(argv[1]));
-  M += strlen(argv[1]);
-  memcpy(M, argv[2], strlen(argv[2]));
-  M += strlen(argv[2]);
-  *M = 0x01;
+  // Join the two input strings.
+  char M[strlen(argv[1]) + strlen(argv[2])];
+  strcpy(M, argv[1]);
+  strcat(M, argv[2]);
 
-  char* resp = keccak(1024, Mbase, 512);
-  // printf("%s\n", resp);
-  printf("%llx\n", *(uint64_t*)resp);
-  /* SHA512("accountpass") ->
-   *
-   * 8b10af5d435006033a111e652c140d59
-   * 454777754577b3cad9d60ba13e1e4b1d
-   * 2ed4c9ae9f060f014eb99bb8d55e7fdb
-   * c8c0779acb9e0ca74faf4437b191532d
-   */
-
-  // test();
-
-  free(Mbase);
+  unsigned char* resp = (unsigned char*)SHA3(512, M);
+  for (size_t i = 0; i < 64; ++i) {
+    unsigned char x = resp[i];
+    // Ignore the top bits that would unevenly divide the charmap.
+    if (x < (0xff / CHARMAPSIZE * CHARMAPSIZE)) {
+      printf("%c", charmap[x % CHARMAPSIZE]);
+    }
+  }
+  printf("\n");
   free(resp);
+
   return 0;
 }

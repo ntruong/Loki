@@ -20,18 +20,28 @@ const uint64_t RC[ROUNDS] = {
   0x8000000000008080, 0x0000000080000001, 0x8000000080008008
 };
 
-// SHA-3 state.
-typedef struct sha3state {
-  uint64_t A[PERMUTATIONS];
-  size_t   N;
-} sha3state;
-
 // Keccak-p steps.
 void theta(uint64_t* A);
 void rho(uint64_t* A);
 void pi(uint64_t* A);
 void chi(uint64_t* A);
 void iota(uint64_t* A, size_t ir);
+void keccakf(uint64_t* A);
+
+// Sponge construction.
+void process(void (*f)(uint64_t*), uint64_t* S, uint64_t* P, size_t r);
+void pad(char* P, size_t, size_t);
+void* sponge(
+  void (*f)(uint64_t*),
+  void (*p)(char*, size_t, size_t),
+  size_t r,
+  const char* N,
+  size_t d
+);
+
+// Create SHA3 function.
+#define KECCAK(c, N, d) sponge(&keccakf, &pad, WIDTH - (c), (N), (d))
+#define SHA3(N, M) KECCAK((N) * 2, M, (N))
 
 // Rotate 64-bit value left by specified amount.
 #define ROTL64(n, qword) ((qword) << (n) | (qword) >> (64 - (n)))
@@ -44,5 +54,8 @@ void iota(uint64_t* A, size_t ir);
   A[(i) + 15] ^ \
   A[(i) + 20]   \
   )
+
+// Take minimum of two arguments.
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
 
 #endif

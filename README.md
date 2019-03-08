@@ -2,7 +2,7 @@
 
 ```
 ~$ loki account password
-BEADC7B39D1109225147DB81C0F399
+wQFI^?GD5R4QmUNE*)ca*cJapmL+94=3ok!E_GPB]P(OlJkr4Wc*b-M:/F&xH7,n
 ```
 
 Loki is a tool that hashes an account with a master password to generate a new
@@ -13,3 +13,8 @@ before passing to SHA512 and truncating to 32 characters.
 We referenced the 2015
 [publication](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf) by NIST,
 also included in the repository.
+
+To make sure the hash is correct, run
+```
+loki --test
+```
