@@ -8,7 +8,7 @@ TARGET=loki
 all : $(TARGET)
 
 $(TARGET) : $(SRC)
-	$(CC) $(CFLAGS) $< -o $@
+	$(CC) $(CFLAGS) $^ -o $@
 
 test : all
 	@./$(BIN)/$(TARGET) account pass

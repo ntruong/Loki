@@ -9,7 +9,7 @@
 #define PERMUTATIONS 25
 #define ROUNDS       24
 
-const uint64_t RC[ROUNDS] = {
+static const uint64_t RC[ROUNDS] = {
   0x0000000000000001, 0x0000000000008082, 0x800000000000808a,
   0x8000000080008000, 0x000000000000808b, 0x0000000080000001,
   0x8000000080008081, 0x8000000000008009, 0x000000000000008a,
@@ -43,9 +43,6 @@ void* sponge(
 #define KECCAK(c, N, d) sponge(&keccakf, &pad, WIDTH - (c), (N), (d))
 #define SHA3(N, M) KECCAK((N) * 2, M, (N))
 
-// Rotate 64-bit value left by specified amount.
-#define ROTL64(n, qword) ((qword) << (n) | (qword) >> (64 - (n)))
-
 // XOR every fifth 64-bit value in the state.
 #define XOR(A, i) ( \
   A[(i)     ] ^ \
@@ -54,8 +51,5 @@ void* sponge(
   A[(i) + 15] ^ \
   A[(i) + 20]   \
   )
-
-// Take minimum of two arguments.
-#define MIN(x, y) ((x) < (y) ? (x) : (y))
 
 #endif
