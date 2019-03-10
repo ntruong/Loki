@@ -162,7 +162,7 @@ void* sponge(
   process(f, S, (uint64_t*)P, r);
 
   // Prepare d-bit string to return.
-  void* Z = (char*)malloc(d);
+  void* Z = (char*)malloc(d + 1);
   size_t Zoff = MIN(d, r);
   memset(Z, 0, d);
   memcpy(Z, S, Zoff);
@@ -173,6 +173,9 @@ void* sponge(
     memcpy(Z + Zsz, S, Zoff);
     Zsz += Zoff;
   }
+
+  // Null terminate strings.
+  ((char*)Z)[d] = 0;
 
   return Z;
 }

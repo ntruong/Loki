@@ -19,8 +19,8 @@ static const unsigned char charmap[CHARMAPSIZE] = {
 
 void printhash(unsigned char* D)
 {
-  for (size_t i = 0; i < 64; ++i) {
-    unsigned char x = D[i];
+  while (*D) {
+    unsigned char x = *D++;
     // Ignore the top bits that would unevenly divide the charmap.
     if (x < (0xff / CHARMAPSIZE * CHARMAPSIZE)) {
       printf("%c", charmap[x % CHARMAPSIZE]);
@@ -79,6 +79,7 @@ void help(void)
 }
 
 typedef enum Flag {
+  SHA3_256,
   SHA3_512
 } Flag;
 
@@ -100,6 +101,9 @@ int main(int argc, char* argv[])
     }
     else if (strcmp(argv[i], "--test") == 0) {
       test = 1;
+    }
+    else if (strcmp(argv[i], "--sha3-256") == 0) {
+      option = SHA3_256;
     }
     else if (strcmp(argv[i], "--sha3-512") == 0) {
       option = SHA3_512;
@@ -145,6 +149,9 @@ int main(int argc, char* argv[])
   // Do the hash!
   unsigned char* D;
   switch (option) {
+    case SHA3_256:
+      D = (unsigned char*)SHA3(256, M);
+      break;
     case SHA3_512:
       D = (unsigned char*)SHA3(512, M);
       break;
