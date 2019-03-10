@@ -29,31 +29,52 @@ void printhash(unsigned char* D)
   printf("\n");
 }
 
-// Test SHA3-512 hash.
-int test_sha3_512(void)
+// Test string.
+static const char* testM = "password";
+
+// Test messages.
+int test_output(uint64_t* msg, uint64_t* key, size_t n)
 {
-  const char* M     = "accountpass";
-  uint64_t* D       = (uint64_t*)SHA3(512, M);
-  uint64_t  test[8] = {
-    0x030650435daf108b,
-    0x590d142c651e113a,
-    0xcab3774575774745,
-    0x1d4b1e3ea10bd6d9,
-    0x010f069faec9d42e,
-    0xdb7f5ed5b89bb94e,
-    0xa70c9ecb9a77c0c8,
-    0x2d5391b13744af4f
-  };
-  for (size_t i = 0; i < 512 / 8 / sizeof(uint64_t); ++i) {
-    if (D[i] != test[i]) {
+  for (size_t i = 0; i < n; ++i) {
+    if (msg[i] != key[i]) {
       fprintf(stderr, "something went wrong on %ld\n", i);
-      fprintf(stderr, "saw:      0x%016llx\n", D[i]);
-      fprintf(stderr, "expected: 0x%016llx\n", test[i]);
+      fprintf(stderr, "saw:      0x%016llx\n", msg[i]);
+      fprintf(stderr, "expected: 0x%016llx\n", key[i]);
       return 1;
     }
   }
   printf("we're okay\n");
   return 0;
+}
+
+// Test SHA3-256 hash.
+int test_sha3_256(void)
+{
+  uint64_t* msg    = (uint64_t*)SHA3(256, testM);
+  uint64_t  key[4] = {
+    0x007fe8f44a7d06c0,
+    0x23286815b663acdb,
+    0x67acbe1b2d175970,
+    0x84a4fda9d6457342
+  };
+  return test_output(msg, key, 4);
+}
+
+// Test SHA3-512 hash.
+int test_sha3_512(void)
+{
+  uint64_t* msg    = (uint64_t*)SHA3(512, testM);
+  uint64_t  key[8] = {
+    0x0a556a738654a7e9,
+    0x058337e261a8fef4,
+    0xe1de9450a055a5c4,
+    0xc39ca4fe8af6a2dc,
+    0xa51e13eae68d0ea5,
+    0xa154b06f4d1f3121,
+    0x2eff358e2f28e846,
+    0x1697902ea6c16863
+  };
+  return test_output(msg, key, 8);
 }
 
 // Help menu stuff.
@@ -124,6 +145,8 @@ int main(int argc, char* argv[])
   // Check to see if we should test hashes.
   if (test) {
     switch (option) {
+      case SHA3_256:
+        return test_sha3_256();
       case SHA3_512:
         return test_sha3_512();
       default:
